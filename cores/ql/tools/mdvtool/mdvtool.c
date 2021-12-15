@@ -1,11 +1,22 @@
-/* mdvtool */
-/* another quick'n dirty tool to deal with microdrive images */
+// mdvtool */
+// another quick'n dirty tool to deal with microdrive images
+// Original author Till Harbaum */
+//
+// Create MDV function added 
+// Fixed ZIP import
+// Squished a few bugs 
+// (c)2019 Jason Lucas
+// 
+// Additional fixes squidrpi
+// 
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 #include <zip.h>
+
 
 #include "mdv.h"
 
@@ -60,7 +71,7 @@ unsigned short sum(unsigned char *p, int len) {
 unsigned short get_index(int s) {
   int i;
   for(i=0;i<MAX_SECTORS;i++)
-    if(sector_table[i] == s) 
+    if(sector_table[i] == s)
       return i;
 
   // not found
@@ -77,6 +88,7 @@ int check_preamble(unsigned char *p, int zeros) {
   return 0;
 }
 
+
 // get entry from mapping table in sector 0
 int get_mapping_entry(int i) {
   return 256*buffer[0].sec.data[2*i] + buffer[0].sec.data[2*i+1];
@@ -88,32 +100,37 @@ int mdv_check_mapping(void) {
   for(i=0;i<255;i++) {
     // mapping entry from sector 0
     int me = get_mapping_entry(i);
-
     // check only used entries
     if(me != 0xff00) {
       // file/block entry as stored inside block header
+     
       unsigned short phys = get_index(i);
-
+      
       // check for valid physical entry
-      // TODO:
+      if(phys>255){
+        printf("WARNING: Invalid physical entry:%d\n",phys);
+        return -1;
+      }
 
       int me_bh = 256*buffer[phys].sec.file + buffer[phys].sec.block;
 
       if(me != me_bh)
-	printf("%3d: %04x / %04x\n",  i, me, me_bh);
+  printf("%3d: %04x / %04x\n",  i, me, me_bh);
     } else {
       // this sector must not be used at all
+      
       unsigned short phys = get_index(i);
-
+      
       if(phys != 0xffff) {
-	int me_bh = 256*buffer[phys].sec.file + buffer[phys].sec.block;
-	printf("index = %d (%x/%x)\n", phys, me, me_bh);
+        int me_bh = 256*buffer[phys].sec.file + buffer[phys].sec.block;
+        printf("index = %d (%x/%x)\n", phys, me, me_bh);
       }
     }
   }
+  return 0;
 }
 
-void file_dump_chain(int f) {	
+void file_dump_chain(int f) {  
   int j;
 
   // dump block chain
@@ -123,41 +140,85 @@ void file_dump_chain(int f) {
   }
   printf("\n");
 }
+void mdv_create(void){
+  if (!strlen(medium_name)) strncpy(medium_name,"MD        ",10);
+  printf("Creating mdv\n");
+  int rand=random();
+  
+  for(int c=0;c<MAX_SECTORS;c++){
+
+    buffer[c].hdr.preamble[10]=0xFF;
+    buffer[c].hdr.preamble[11]=0xFF;
+    buffer[c].hdr.ff=0xFF;
+    buffer[c].hdr.snum=c;
+    buffer[c].hdr.rnd=rand;
+    buffer[c].sec.bh_preamble[10]=0xFF;
+    buffer[c].sec.bh_preamble[11]=0xFF;
+    buffer[c].sec.data_preamble[6]=0xFF;
+    buffer[c].sec.data_preamble[7]=0xFF;
+    buffer[c].sec.file=0xFD;
+    strncpy(buffer[c].hdr.name,medium_name,10);
+    for(int d=0;d<512;d++) buffer[c].sec.data[d]=0x00;
+    for(int d=0;d<120;d++) buffer[c].sec.extra_byte[d]=0x5A;    
+    if(c==0){ //Sector 0 - File map
+      buffer[c].sec.file=0x80;
+      for(int d=0;d<512;d+=2) {
+        buffer[c].sec.data[d]=0xFD;
+        buffer[c].sec.data[d+1]=0x00;
+      }
+      buffer[c].sec.data[0]=0xF8;
+      buffer[c].sec.data[2]=0x00;
+    }
+    if(c==1){//Root Dir
+      buffer[c].sec.file=0x00;
+      //Set Dir length to 1 entry (64 bytes)
+      buffer[c].sec.data[2]=0x00;
+      buffer[c].sec.data[3]=0x40;
+    }
+    buffer[c].hdr.csum=sum(&buffer[c].hdr.ff,14);
+    buffer[c].sec.bh_csum=sum(&buffer[c].sec.file,2);
+    buffer[c].sec.data_csum=sum(buffer[c].sec.data,512);
+  }
+  return ;
+
+}
 
 int mdv_load(char *name) {
 
-  printf("Loading %s ...\n", name);
-  
+  int size=sizeof(buffer);
   memset(medium_name, 0, sizeof(medium_name));
   memset(sector_table, 0xff, sizeof(sector_table));
   memset(files, 0xff, sizeof(files));
-  
-  mdv = fopen(name, "rb");
-  if(!mdv) {
-    fprintf(stderr, "Unable to open %s\n", name);
-    return -1;
-  }
-
-  // check file size
-  fseek(mdv, 0, SEEK_END);
-  int size = ftell(mdv);
-  fseek(mdv, 0, SEEK_SET);
-
-  if(size == sizeof(buffer)) {
-    // load qlay format file
-    if(fread(buffer, sizeof(mdv_entry_t), MAX_SECTORS, mdv) != MAX_SECTORS) {
-      perror("fread()");
+  if(!strcasecmp(name, "create")){
+    mdv_create();
+  } else {
+    printf("Loading %s ...\n", name);
+    mdv = fopen(name, "rb");
+    if(!mdv) {
+      fprintf(stderr, "Unable to open %s\n", name);
       return -1;
     }
-  } else {
-    fprintf(stderr, "Uexpected file size\n");
-    
-    // check if it's a qemulator image and load and convert it
-    
-    
-    return -1;
+
+    // check file size
+    fseek(mdv, 0, SEEK_END);
+    size = ftell(mdv);
+    fseek(mdv, 0, SEEK_SET);
+
+    if(size == sizeof(buffer)) {
+      // load qlay format file
+      if(fread(buffer, sizeof(mdv_entry_t), MAX_SECTORS, mdv) != MAX_SECTORS) {
+        perror("fread()");
+        return -1;
+      }
+    } else {
+      fprintf(stderr, "Uexpected file size\n");
+      
+      // check if it's a qemulator image and load and convert it
+      
+      
+      return -1;
+    }
   }
-    
   // check all chunks
   int i, free=0;
   int used = 0;
@@ -176,24 +237,22 @@ int mdv_load(char *name) {
       //      fprintf(stderr, "Header %d ff check failed\n", i);
     } else {
       if(hdr->csum != sum(&hdr->ff, 14)) {
-	printf("Header @%d: checksum failed\n", i);
-	return -1;
+        printf("Header @%d: checksum failed\n", i);
+        return -1;
       }
       
       if(!medium_name[0]) {
-	memcpy(medium_name, hdr->name, 10);
+        memcpy(medium_name, hdr->name, 10);
       } else {
-	if(memcmp(medium_name, hdr->name, 10) != 0) {
-	  fprintf(stderr, "Header @%d: Medium name mismatch "
-		  "(\"%.10s\" != \"%.10s\")\n", i, hdr->name, medium_name);
-	  return -1;
-	}
+        if(memcmp(medium_name, hdr->name, 10) != 0) {
+        fprintf(stderr, "Header @%d: Medium name mismatch ""(\"%.10s\" != \"%.10s\")\n", i, hdr->name, medium_name);
+        return -1;
+        }
       }
       
       if(sector_table[i] != 0xff) {
-	fprintf(stderr, "Header @%d: Multiple sector number %d\n",
-		i, hdr->snum);
-	return -1;
+        fprintf(stderr, "Header @%d: Multiple sector number %d\n",i, hdr->snum);
+        return -1;
       }
       sector_table[i] = hdr->snum;
       
@@ -202,31 +261,31 @@ int mdv_load(char *name) {
       
       // check preamble
       if(check_preamble(sec->bh_preamble, 10) != 0) {
-	fprintf(stderr, "Sector @%d: Block header preamble check failed\n", i);
-	return -1;
+        fprintf(stderr, "Sector @%d: Block header preamble check failed\n", i);
+        return -1;
       }
       
       if(sec->bh_csum != sum(&sec->file, 2)) {
-	printf("WARNING: Sector @%d(%d): Block header checksum failed\n", i, hdr->snum);
+        printf("WARNING: Sector @%d(%d): Block header checksum failed\n", i, hdr->snum);
       }
       
       if(sec->data_csum != sum(sec->data, 512)) {
-	printf("WARNING: Sector @%d(%d): Data checksum failed %x != %x\n", 
-	       i, hdr->snum, sec->data_csum, sum(sec->data, 512));
+        printf("WARNING: Sector @%d(%d): Data checksum failed %x != %x\n", 
+               i, hdr->snum, sec->data_csum, sum(sec->data, 512));
       }
       
       // save the file index if it's not a free sector (file == 253)
       if(sec->file == 253)
-	free++;
+        free++;
       else {
-	if(files[sec->file][sec->block] != 255) {
-	  fprintf(stderr, "Sector @%d: Multiple file/block %d/%d\n",
-		  i, sec->file, sec->block);
-	  return -1;
-	}
-	
-	used++;
-	files[sec->file][sec->block] = hdr->snum;
+        if(files[sec->file][sec->block] != 255) {
+          fprintf(stderr, "Sector @%d: Multiple file/block %d/%d\n",
+                  i, sec->file, sec->block);
+          return -1;
+        }
+  
+        used++;
+        files[sec->file][sec->block] = hdr->snum;
       }
     }
   }
@@ -238,8 +297,8 @@ int mdv_load(char *name) {
     if(sector_table[i] != 255) {
       // for every sector != 0 the previous sector must also exist
       if(sector_table[i] > 0) {
-	if(get_index(sector_table[i]-1) == -1) 
-	  fprintf(stderr, "WARNING: Missing sector %d\n", sector_table[i]-1);
+        if(get_index(sector_table[i]-1) == -1) 
+          fprintf(stderr, "WARNING: Missing sector %d\n", sector_table[i]-1);
       }
     }
   }
@@ -252,9 +311,7 @@ int mdv_load(char *name) {
 }
 
 sector_t *file_get_sector(int file, int block) {
-  if(files[file][block] == 255) 
-    return NULL;
-
+  if(files[file][block] == 255) return NULL;
   return &buffer[get_index(files[file][block])].sec;
 }
 
@@ -266,16 +323,15 @@ void mdv_files_check() {
     int j, bused = 0;
     for(j=0;j<256;j++) {
       if(files[i][j] != 255) {
-	bused++;
+        bused++;
 
-	if((j > 0) && (files[i][j-1] == 255)) 
-	  printf("File %d: Missing entry for block %d\n", i, j-1);
+        if((j > 0) && (files[i][j-1] == 255)) 
+          printf("File %d: Missing entry for block %d\n", i, j-1);
       }
     }
 
     if(bused) 
-      if((i > 0)&&(i < 128))
-	used++;
+      if((i > 0)&&(i < 128)) used++;
   }
 
   printf("Number of regular files: %d\n", used);
@@ -332,7 +388,7 @@ void file_export(char *name) {
     return;
   }
 
-  int size = file_size(f);
+  int size = file_size(f)-64; //Subtract 64 bytes for qdos header
   printf("Exporting %d bytes to '%s' ... ", size, name);
 
   FILE *out = fopen(name, "wb");
@@ -377,8 +433,8 @@ void mdv_files_list_chain(int f) {
 
 void show_file_entry(file_t *f) {
   printf("%16s %5d %s, V:%x, U:%d, B:%d", f->name,
-	 SWAP32(f->length), (f->type<=1)?(f->type?"EXEC":"DATA"):"????",
-	 SWAP32(f->version), SWAP32(f->last_update), SWAP32(f->last_backup));
+   SWAP32(f->length), (f->type<=1)?(f->type?"EXEC":"DATA"):"????",
+   SWAP32(f->version), SWAP32(f->last_update), SWAP32(f->last_backup));
 
   if(f->type == 1)
     printf(" info: %d/%d", SWAP32(f->info[0]), SWAP32(f->info[1]));
@@ -395,8 +451,8 @@ void mdv_files_list_chains() {
     if(s) {
       printf("=== file %d ===\n", f);
       if((f>0) && (f<128)) {
-	printf("Directory entry: ");
-	show_file_entry((file_t*)s->data);
+        printf("Directory entry: ");
+        show_file_entry((file_t*)s->data);
       }
       mdv_files_list_chain(f);
     }
@@ -452,9 +508,35 @@ void mdv_dir() {
   }
 }
 
+sector_t *get_free_block(int file_index,int block,int last_block){
+  // get a free block
+  int i, s;
+  for(i=0;i<MAX_SECTORS;i++) {
+    s = last_block - 13 - i;
+    if(s < 0) s += MAX_SECTORS;
+    if((get_mapping_entry(s) &0xff00) == 0xfd00) break;
+  }
+
+  if(i == MAX_SECTORS) {
+    printf("Image full\n");
+    return 0;
+  }
+
+  // set new mapping entry
+  buffer[0].sec.data[2*s] = file_index;
+  buffer[0].sec.data[2*s+1] = block;
+  files[file_index][block] = s;
+
+  return file_get_sector(file_index, block);
+}
+
 void file_write(file_t *file, char *data) {
-  printf("Writing file '%s' with %d bytes to mdv image ...\n", 
-	 file->name, SWAP32(file->length));
+  //Convert dots in file name to underscores
+  for(int c=0;c<strlen(file->name);c++){
+    if(file->name[c]=='.') file->name[c]='_';
+  }
+  
+  printf("Writing file '%s' with %d bytes to mdv image ...\n",file->name, SWAP32(file->length));
 
   // many programs have been modified to run from floppy
   // Change them to run from microdrive
@@ -467,23 +549,28 @@ void file_write(file_t *file, char *data) {
     }
   }
 
-  if(replace)
-    printf("!!!!INFO: Replaced %d occurances of flp1_ by mdv1_\n", replace);
+  if(replace) printf("!!!!INFO: Replaced %d occurances of flp1_ by mdv1_\n", replace);
+
+  //Add 64 bytes to file length for qdos header
+  file->length=SWAP32(SWAP32(file->length) +64);
 
   // check if file exists
   if(file_open(file->name) >= 0) {
     printf("file already exists!\n");
     return;
   }
-
+    
   // search for a free directory entry
   int file_index = -1;
   int entries = file_size(0)/sizeof(file_t);
-  
   // check if we need to extend the directory file
   if((entries & 7) == 7) {
-    printf("ERROR: Directory file extension not supported yet\n");
-    return;
+    //Extend directory
+    sector_t *sec = get_free_block(0,(entries/8)+1,(entries/8));
+    sec->file = 0;
+    sec->block = (entries/8)+1;
+    sec->bh_csum = sum(&sec->file, 2);
+    entries = file_size(0)/sizeof(file_t);
   }
   
   // write directory entry 
@@ -510,30 +597,9 @@ void file_write(file_t *file, char *data) {
     int blk_size = block?512:(512-sizeof(file_t));
     if(blk_size > size) blk_size = size;
 
-    //    printf("Writing block %d with %d bytes\n", block, blk_size);
+    //printf("Writing block %d with %d bytes\n", block, blk_size);
 
-    // get a free block
-    int i, s;
-    for(i=0;i<MAX_SECTORS;i++) {
-      s = last_block - 13 - i;
-      if(s < 0) s += MAX_SECTORS;
-
-      if((get_mapping_entry(s) &0xff00) == 0xfd00)
-	break;
-    }
-
-    if(i == MAX_SECTORS) {
-      printf("Image full\n");
-      return;
-    }
-
-    // set new mapping entry
-    buffer[0].sec.data[2*s] = file_index;
-    buffer[0].sec.data[2*s+1] = block;
-    files[file_index][block] = s;
-
-    sector_t *sec = file_get_sector(file_index, block);
-
+    sector_t *sec = get_free_block(file_index,block,last_block);
     // update mapping entry and fill sector
     if(!block) {
       memcpy(sec->data, file, sizeof(file_t));
@@ -542,21 +608,23 @@ void file_write(file_t *file, char *data) {
       memcpy(sec->data, data, blk_size);
 
     // adjust headers
-    unsigned short phys = get_index(s);
+    //   unsigned short phys = get_index(s);
 
     sec->file = file_index;
     sec->block = block;
     sec->bh_csum = sum(&sec->file, 2);
-
+    last_block=files[file_index][block];
     block++;
     size -= blk_size;
     data += blk_size;
 
-    last_block = s;
+    //last_block = s;
+    
   }
 }
 
 void zip_import(char *name) {
+
   printf("Importing from ZIP %s\n", name);
 
   assert(sizeof(zip_extra_qdos_t) == 72);
@@ -580,62 +648,49 @@ void zip_import(char *name) {
     if(!file) 
       fprintf(stderr, "Error opening zip file %s, skipping it\n", name);
     else {
-      int len;
+      short unsigned int x_len,index=0,x_id;
       file_t b, *qdos = NULL;
-      const char *extra = zip_get_file_extra(zip, i, &len, 0);
+       // parse extra fields
 
-      // parse extra fields
-      while(len) {
-	unsigned short x_id = *(unsigned short*)extra;
-	unsigned short x_len = *(unsigned short*)(extra+2);
-
-	// an extra field contains the qdos directory entry for
-	// executables
-	if(x_id == 0xfb4a) {
-	  if(x_len != sizeof(zip_extra_qdos_t)) 
-	    fprintf(stderr, "Warning extra entry size mismatch, ignoring it\n");
-	  else {
-	    zip_extra_qdos_t *qdos_extra = NULL;
-	    qdos_extra = (zip_extra_qdos_t*)(extra+4);
-	    qdos = &qdos_extra->file;
-	    //	    show_file_entry(qdos);
-	  }
-	}
-
-	len -= 4+x_len;
-	extra += 4+x_len;
+      const unsigned char *extra = zip_file_extra_field_get(zip, i,index,&x_id, &x_len, ZIP_FL_CENTRAL);
+      if(x_id == 0xfb4a) {
+        if(x_len != sizeof(zip_extra_qdos_t)) 
+          fprintf(stderr, "Warning extra entry size mismatch, ignoring it\n");
+        else {
+          zip_extra_qdos_t *qdos_extra = NULL;
+          qdos_extra = (zip_extra_qdos_t*)(extra);
+          qdos = &qdos_extra->file;
+          show_file_entry(qdos);
+        }
       }
 
       // chekk file size vs 
       struct zip_stat sb;
       if(zip_stat_index(zip, i, 0, &sb) != 0)
-	fprintf(stderr, "Error get file stat, skipping it\n");
+          fprintf(stderr, "Error get file stat, skipping it\n");
       else {
-	if(!(sb.valid & ZIP_STAT_SIZE))
-	  fprintf(stderr, "Error file size unknown, skipping it\n");
-	else {
-	  if(qdos && (sb.size != SWAP32(qdos->length)))
-	    printf("WARNING: qdos/zip file size mismatch\n");
-	  
-	  if(!qdos) {
+        if(!(sb.valid & ZIP_STAT_SIZE))
+          fprintf(stderr, "Error file size unknown, skipping it\n");
+        else {
+          if(qdos && (sb.size != SWAP32(qdos->length)))
+            printf("WARNING: qdos/zip file size mismatch\n");
+    
+          if(!qdos) {
             // create qdos file entry of none was given
             memset(&b, 0, sizeof(b));
-	    b.length = SWAP32(sb.size);
-	    b.name_len = SWAP16(strlen(name));
-	    strcpy(b.name, name);
-	    qdos = &b;
-	  }
-	  
-	  // load file contents into memory
-	  char *buffer = (char*)malloc(sb.size);
-	  if(zip_fread(file, buffer, SWAP32(qdos->length)) != 
-	     SWAP32(qdos->length)) 
-	    fprintf(stderr, "Error unzipping file %s, skipping it\n", name);
-	  else 
-	    file_write(qdos, buffer);
-	  
-	  free(buffer);
-	}
+            b.length = SWAP32(sb.size);
+            b.name_len = SWAP16(strlen(name));
+            strcpy(b.name, name);
+            qdos = &b;
+          }
+    
+          // load file contents into memory
+          char *buffer = (char*)malloc(sb.size);
+          if(zip_fread(file, buffer, SWAP32(qdos->length)) != SWAP32(qdos->length)) 
+            fprintf(stderr, "Error unzipping file %s, skipping it\n", name);
+          else file_write(qdos, buffer);
+          free(buffer);
+        }
       }
       
       zip_fclose(file);
@@ -643,6 +698,7 @@ void zip_import(char *name) {
   }
   
   zip_close(zip);
+
 }
 
 void file_import(char *name) {
@@ -653,10 +709,10 @@ void file_import(char *name) {
   }
 
   // check file size
-  fseek(mdv, 0, SEEK_END);
+  fseek(in, 0, SEEK_END);
   int size = ftell(in);
-  fseek(mdv, 0, SEEK_SET);
-
+  fseek(in, 0, SEEK_SET);
+ 
   char *buffer = malloc(size);
   if(fread(buffer, 1, size, in) != size) {
     perror("fread()");
@@ -679,14 +735,9 @@ void file_import(char *name) {
 }
 
 void mdv_write(char *name) {
-  printf("Writing mdv %s\n", name);
-
-  // adjust checksums
   int i;
-  for(i=0;i<MAX_SECTORS;i++) {
-    if(buffer[i].hdr.ff == 0xff)
-      buffer[i].sec.data_csum = sum(buffer[i].sec.data, 512);
-  }
+
+  printf("Writing mdv %s\n", name);
 
   FILE *out = fopen(name, "wb");
   if(!out) {
@@ -694,14 +745,30 @@ void mdv_write(char *name) {
     return;
   }
 
-  if(fwrite(buffer, sizeof(mdv_entry_t), MAX_SECTORS, out) != MAX_SECTORS) {
-    perror("fwrite()");
-    fclose(out);
-    return;
+  // Write all sectors to output file,
+  // First write sector 0 then others in reverse order
+  for(i=MAX_SECTORS;i>0;i--) {
+    unsigned char cursec;
+
+    cursec=i;
+    if(cursec == MAX_SECTORS) cursec = 0;
+
+    // adjust checksums
+    if(buffer[cursec].hdr.ff == 0xff)
+      buffer[cursec].sec.data_csum = sum(buffer[cursec].sec.data, 512);
+
+    // write a sector at a time
+    if(!fwrite(&buffer[cursec], sizeof(mdv_entry_t), 1, out)) {
+      fprintf(stderr, "Error writing qlay image\n");
+      perror("fwrite()");
+      return;
+    }
+
   }
 
   fclose(out);
 }
+
 
 void mdv_erase(void) {
   printf("Erasing MDV image ...\n");
@@ -709,7 +776,6 @@ void mdv_erase(void) {
   // mark all sectors as free
   int i;
   for(i=0;i<MAX_SECTORS;i++) {
-    unsigned short phys = get_index(i);
 
     // set new mapping entry
 
@@ -719,22 +785,22 @@ void mdv_erase(void) {
 
     if(sec) {
       if(file) {
-	//	printf("erasing file %d, block %d\n", file, block); 
-	
-	files[file][block] = 0xff;
-	buffer[0].sec.data[2*i] = 0xfd;
-	buffer[0].sec.data[2*i+1] = 0x00;
-	
-	// adjust headers
-	sec->file = 0xfd;
-	sec->block = 0x00;
-	sec->bh_csum = sum(&sec->file, 2);
+        printf("erasing file %d, block %d\n", file, block); 
+  
+        files[file][block] = 0xff;
+        buffer[0].sec.data[2*i] = 0xfd;
+        buffer[0].sec.data[2*i+1] = 0x00;
+  
+        // adjust headers
+        sec->file = 0xfd;
+        sec->block = 0x00;
+        sec->bh_csum = sum(&sec->file, 2);
       } else {
-	// leave directory intact
-	//	printf("keeping dir block %d\n", block);
+        // leave directory intact
+        //  printf("keeping dir block %d\n", block);
 
-	// but erase it
-	memset(sec->data, 0, 512);
+        // but erase it
+        memset(sec->data, 0, 512);
       }
     }
   }
@@ -753,7 +819,7 @@ void mdv_rename(char *name) {
     lname[strlen(lname)] = ' ';
 
   printf("Setting name: '%s'\n", lname);
-
+  strncpy(medium_name,lname,10);
   int i;
   unsigned short rnd = random();
   for(i=0;i<MAX_SECTORS;i++) {
@@ -763,13 +829,20 @@ void mdv_rename(char *name) {
       buffer[i].hdr.csum = sum(&buffer[i].hdr.ff, 14);
     }
   }
+  
 }
 
 int main(int argc, char **argv) {
 
+  assert(sizeof(hdr_t) == 28);
+  assert(sizeof(sector_t) == 658);
+  assert(sizeof(file_t) == 64);
+
   if(argc < 3) {
     printf("Usage: mdvtool <mdv> commands\n");
+    printf("   or: mdvtool create commands\n");
     printf("Commands:\n");
+    printf("   create               - create a new MDV image\n");
     printf("   dir                  - list MDV contents\n");
     printf("   check_files          - check file integrity\n");
     printf("   file_chains          - list chain of sectors for each file\n");
@@ -783,10 +856,6 @@ int main(int argc, char **argv) {
     printf("   write file_name      - write the MDV image\n"); 
     return 0;
   }
-
-  assert(sizeof(hdr_t) == 28);
-  assert(sizeof(sector_t) == 658);
-  assert(sizeof(file_t) == 64);
 
   if(mdv_load(argv[1]) < 0) {
     mdv_close();
@@ -802,8 +871,8 @@ int main(int argc, char **argv) {
 
     else if(!strcasecmp(argv[c], "export")) {
       if(++c >= argc) {
-	printf("export needs a file name as parameter\n");
-	return 0;
+        printf("export needs a file name as parameter\n");
+        return 0;
       }
 
       file_export(argv[c]);
@@ -811,8 +880,8 @@ int main(int argc, char **argv) {
     
     else if(!strcasecmp(argv[c], "import")) {
       if(++c >= argc) {
-	printf("import needs a file name as parameter\n");
-	return 0;
+        printf("import needs a file name as parameter\n");
+        return 0;
       }
 
       file_import(argv[c]);
@@ -820,8 +889,8 @@ int main(int argc, char **argv) {
 
     else if(!strcasecmp(argv[c], "name")) {
       if(++c >= argc) {
-	printf("name needs an image name as parameter\n");
-	return 0;
+        printf("name needs an image name as parameter\n");
+        return 0;
       }
 
       mdv_rename(argv[c]);
@@ -829,8 +898,8 @@ int main(int argc, char **argv) {
 
     else if(!strcasecmp(argv[c], "zip_import")) {
       if(++c >= argc) {
-	printf("zip_import needs a file name as parameter\n");
-	return 0;
+        printf("zip_import needs a file name as parameter\n");
+        return 0;
       }
 
       zip_import(argv[c]);
@@ -838,8 +907,8 @@ int main(int argc, char **argv) {
 
     else if(!strcasecmp(argv[c], "write")) {
       if(++c >= argc) {
-	printf("write needs a file name as parameter\n");
-	return 0;
+        printf("write needs a file name as parameter\n");
+        return 0;
       }
 
       mdv_write(argv[c]);
@@ -870,3 +939,4 @@ int main(int argc, char **argv) {
 
   return 0;
 }
+

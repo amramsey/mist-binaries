@@ -8,24 +8,24 @@ The source code of the modified version is available [in the mist-board reposito
 Usage
 -----
 
-Copy the latest core version onto a SD card and rename it to ```core.rbf```.
+Copy the latest core version onto a SD card and rename it to ```core.rbf```. Also
+copy ``C16.ROM`` to the root of the SD card.
 
-Alternative ROMs
-----------------
+ROMs
+----
 
-It's possible to replace one or all of the three ROMs (C1541, Kernal and Basic) by
-putting them in a file on the SD Card and name it to ```C16.ROM```. The format is
-C1541 + Kernal + Basic, 16k each. Partially replacing ROMs are allowed, e.g. just
-changeing the 1541's ROM to JiffyDOS, you need only a 16k ```C16.ROM``` with the
-appropriate JiffyDOS version.
+From 20190504 release, ``C16.ROM`` is required to put at the root directory of the SD-Card.
+The format of this file is C1541 + Kernal + Basic + (Function LOW + Function HIGH).
+Function ROMs are optional.
 
 PAL/NTSC version
 ----------------
 
-There are two versions of the core built, one for PAL and one for NTSC systems.
-They contain the appropriate kernal versions, so no need to load them separately.
-However you can replace the kernal with alternative versions with the method
-described above.
+The TED chip can switch PAL/NTSC modes on the fly. The Kernal sets the
+appropriate register, so with changing the Kernal ROM, it is possible to switch
+the video standard. The default is PAL mode.
+You can load a new Kernal from the OSD menu, or permamently replace it
+with alternative versions with the method described above.
 
 Loading and running programs
 ----------------------------
@@ -48,17 +48,46 @@ in D64 format. The simply use the regular C16 methods to access the
 floppy disk. In most cases ```LOAD "*",8``` and a subsequent ```RUN```
 will be what you want.
 
+SID extension
+-------------
+
+Selectable SID versions are in the OSD menu. Enabling one of them maps
+the SID to the FD40-FD5F and FE80-FE9F addresses.
+
 Using a SCART TV
 ----------------
 
 The C16 core supports the MiST's ability to disable the built-in VGA
 scandoubler. Using the [appropriate cable](https://github.com/mist-devel/mist-board/wiki/ScartCable) the C16 core can thus drive a standard SCART TV.
+You can use [component output](https://github.com/mist-devel/mist-board/wiki/YPbPr_Cable), too.
 
 History
 -------
+* [c16_190921.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/c16_190921.rbf)
+  - TED fixes (Alpharay scrolling, Pets Rescue title screen, Adventure Park loading)
+  
+* [c16_190507.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/old/c16_190507.rbf)
+  - Fix a ROM corruption issue
 
-* [c16_180905_PAL.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/c16_180905_PAL.rbf),
-  [c16_180905_NTSC.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/c16_180905_NTSC.rbf)
+* [c16_190504.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/old/c16_190504.rbf)
+  - Fix composite sync for scandoubled display
+  - ROM is moved to SDRAM to free up FPGA BRAM. This means C16.ROM is now mandatory, no more built-in ROMs!
+  - Function ROMs can be used
+  - SID 6581 filters are enabled
+  - TED sounds are a bit louder now
+
+* [c16_190502.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/old/c16_190502.rbf)
+  - TAP file playback
+  - SID extension
+
+* [c16_190214.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/old/c16_190214.rbf)
+  - One core version for PAL/NTSC
+  - Loadable Kernal ROM from the OSD menu
+  - Disk change detection fix
+  - Bigger OSD on VGA
+
+* [c16_180905_PAL.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/old/c16_180905_PAL.rbf),
+  [c16_180905_NTSC.rbf](https://github.com/mist-devel/mist-binaries/raw/master/cores/c16/old/c16_180905_NTSC.rbf)
   - Updates and bug fixes to C1541 makes it work with every tested fastloader without timing hacks
   - Fixed PRG loader
   - All ROMs are replaceable
