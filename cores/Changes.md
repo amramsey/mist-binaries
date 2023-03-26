@@ -1,3 +1,209 @@
+**TVC_230113.rbf**
+- Fix sound divider and interrupt generator
+
+**C64_230228.rbf**
+- Add a normal reset without removing the cartridge
+- Fix cartridge (C64.R02) file autoload
+- Add support for cart type 36 (Retro Replay)
+- Fix a regression with VIC-II data fetch when AEC is asserted
+
+**zxspectrum_230122.rbf**
+- Replace WD1772
+- Fix PlusD interface
+- Disable Covox/Sndrive during TRDOS/PlusD use
+
+**TVC_230113.rbf**
+- Enhanced from the original core (originally by József László)
+- Rewritten some parts to synchronous code
+- Updated the various components, like the T80 CPU and MC8645 CRTC
+- Cartridge and FDC support
+- Some additional fixes, like digi sound is working now
+- 15kHz (original) and 31kHz(scandoubled) video outputs are supported in one core
+
+**ep128_221116.rbf**
+- New core by Kyp
+
+**apple2e_221113.rbf**
+- Fix the floating bus values
+- Correct the vertical counter advancing (make Cycle Counting Megademo from VMW work)
+- NTSC/PAL mode switch option
+- Update T65 and mist-modules
+
+**C64_220530.rbf**
+- Adjust blanking/sync timings according to prelimiary VIC-II datasheet/Christian Bauer's VIC-II docs
+- T65: rework interrupt dispatching
+- CPUPort: bit 5 is low when input
+- Update VIA
+- C64.R02 can be used as a default cart image
+
+**Oric_221104.rbf**
+- Fix the refresh logic in the SDRAM controller
+
+**Oric_221030.rbf**
+- Some updates and cleanups since the last released version
+- Internal TAP playback support
+- VIA6522 updated to the latest from the Commodore cores
+- ROM resides in SDRAM now (an oric.rom is required)
+
+**zxspectrum_221024.rbf**
+- ESXDOS ROM updated to 0.8.9
+- Currah uSpeech support based on Dar's SP0256 implementation
+
+**vic20_221022.rbf**
+- Update 1541
+- Fix VIA's port latching (Robotic Liberation!)
+- Update MiST modules
+
+**Intellivision_20221001.rbf**
+- Updated ROM loading, should now work with Intellicart .rom files.
+
+**minimig_mist_rtg_220906.rbf**
+- CD audio playback
+
+**Next186_220826.rbf**
+- IDE/ATAPI CDROM related fixes
+
+**Amstrad_220826.rbf**
+- FDC & CRTC related fixes
+- Symbiface II support with IDE and RTC
+
+**Next186_220821.rbf**
+- Some VGA fixes
+- IDE support (Primary slave/Secondary master and slave)
+
+**minimig_mist_rtg_220821.rbf**
+- Fixed bitplane offset bug which broke blitterscreens with sprite masks (by AMR)
+- Implemented ToD clock bug, fixes music for Torvak the Warrior (by AMR)
+- Tweaked bitplane shifting, fixes offset logo in 3le-Passengers (by AMR)
+- ATAPI CDROM support
+
+**pet2001_220722.rbf**
+- New core, ported from https://github.com/skibo/Pet2001_Nexys3 by way of the MiSTer port.
+- Uses SDRAM for ROM and Tape.
+
+**fpgagen_220706.rbf**
+- Update jt12/jt89
+- Multitap support
+- Fix 68K RAM writes from Z80 (fixes Mamono Hunter Yohko)
+
+**apple2e_220701.rbf**
+- Fix disk writes when dirty track buffer left in memory before disk change
+- Add support for 2 disks. Need at least firmware version 220701!
+
+**atari800_220617.rbf**
+- Support for ATX and XFD disk images
+
+**intv_20220607.rbf**
+- Mattel Intellivision, by Grabulosaure and Kitrinx, ported to MiST and DeMiSTified platforms by Alastair M. Robinson
+
+**apple2e_220605.rbf**
+- Generic updates in mist-modules/mockingboard/CPU/etc.
+- Disk write support (tested in DOS 3.3 only)
+- Apple keys are mapped to left/right ALT
+
+**C64_220530.rbf**
+- 1541 fix for Krill's loader
+- Prophet64 cartridge support with second SID
+- 6850 ACIA based MIDI interfaces
+- UP9600 wiring of the user port
+- G64 support for 1541 (loads some protected disks)
+
+**Next186_220508.rbf**
+- Implement 40 char text modes
+- Expand hcounter to 11 bit (fixes Simpsons arcade)
+- Implement the preset row scan CRTC register
+- Option to hide Adlib (for games like Dimo's Quest)
+- Add /32 speed option (for near XT speed)
+- Output active negative syncs
+- Increased BIOS size to 16K (The core won't work with the old BIOS! Also update the FONT.EXE from font-BIOS16k.zip)
+
+**zxspectrum_220505.rbf**
+- Add CRC_ON_OFF command to SD card driver (for Wildplayer DivMMC)
+- Fix unreadable menu when scandoubled disabled
+- Add Covox at #FB port and SounDrive at #0F,#1F,#4F,#5F ports
+- Increase brightness for colors without BRIGHTNESS bit
+Thanks to Eugene Lozovoy (UzixLS) for these patches!
+
+**fpgagen_220420.rbf**
+- Update JT12
+- Return FM status register as in Model 1 (fixes Hellfire)
+- Clear RAM after ROM loading (fixes Handy Harvy)
+- Merge robinsonb5's DeMISTify branch with some SDRAM controller updates
+
+**Next186_220416.rbf**
+- More VGA improvements
+- Flush the instruction queue on reg->mem writes (fixes Army Moves and other Dinamic games)
+- Preliminary Tandy sound and video support
+
+**MiSTery-220401.rbf**
+- Support the Cubase 2 dongle as well
+
+**MiSTery-220329.rbf**
+- Internal Cubase dongle support (update the firmware, too!)
+
+**Next186_220319.rbf**
+- Implement programmable CRTC timings (Battle Isle 2, Flashback using it for custom video modes)
+- Fix VGA address wraparound (Raiden, Alien Breed, etc.)
+
+**apple1_220315.rbf**
+- Fixed bug when loading programs in the range $4000-$BFFF
+- Added debounce filter to cassette input (ACI) to reduce loading errors
+
+**Next186_220311.rbf**
+- JTOPL2 timer fix (affects AdLib detectability)
+- Cache/VGA coherency changes - lot less cache flushes
+- More speed options
+- CGA mode support (BIOS modes 04h, 05h, 06h)
+- Note: BIOS functions are missing to write text in graphics modes
+
+**menu_220220.rbf**
+- Together with **firmware_220220**, menu core has its own menu
+- Use direct transfer to load the background image
+
+**Next186_220217.rbf**
+- Switch Adlib to JTOPL2
+- Selectable Fake286 option (normally the CPU will behave & detected as 80186 now).
+  Patch by Aitor Gómez. Need special version of FDXMS and EMU386 (see below).
+- There are useful utilities in the DOS directory
+- Some easy VGA fixes
+- Prevent mouse FIFO overflow (like in Battle Chess)
+- The SDRAM controller works with 64MB modules (still using 32MB only)
+
+**tgfx16_220216.rbf**
+- Enable vertical overscan blanking
+- Fixes from upstream by srg320 & dshadoff
+
+**menu_pal_220205.rbf**
+**menu_ntsc_220205.rbf**
+- Menu with background image support
+- PAL(50Hz) and NTSC(60Hz) versions
+
+**MiSTery-220116.rbf**
+- Support ED floppy disks
+- Hide the RTC chip if no valid date arrives from the firmware
+
+**apple1_220115.rbf**
+- Extend free RAM to ~64K
+- Load programs via F12 osd menu
+- Full working ACI audio cassette interface via UART_RX/AUDIO_L
+- Accurate CPU clock speed and RAM refresh lost cycles
+- NTSC output and integration with mist_video
+- 5x7 display character matrix as in the real machine
+- Crosstalk pixel artifacts as in the real machine
+- F1 and F5 keys for CLS and RESET
+
+**vic20_220114.rbf**
+- Mega-Cart support (Mega-Thanks to AMR!)
+
+**C64_211224.rbf**
+- Merry "Treu Love" Christmas!
+
+**C64_211220.rbf**
+- CIA Timer fixes
+- VIC-II: latch xscroll one pixel later (Happy 2021 demo)
+- Keyboard numpad symbol support
+- REU up to 16 MB with original timings and bus arbitration
+
 **Amstrad_211211.rbf**
 - Some FDC updates
 - Fix some CRTC behavior (especially CRTC0 ones)

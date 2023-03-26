@@ -7,17 +7,20 @@ Modifications from the original core:
 - Added a standard MiST BIOS loader, the Next186.ROM will be loaded when the core starts.
 - Selectable CPU speed (Maximum, half, third, quarter).
 - CPU clock is 50 MHz, SDRAM clock is 100 MHz.
-- DSP coprocessor is disabled currently (out of BRAM), MP3 playing is not possible.
+- DSP coprocessor is enabled, but too slow for MP3 playing.
+- Using JTOPL2 as FM chip.
 - MPU 401 MIDI output.
+- More complete VGA implementation (programmable CRTC, some compatibility fixes, CGA modes support).
+- Cache controller tweaks to flush VGA data on-demand.
 
 ## Usage
 
-You'll need an installed MS-DOS (up to v6.22) on the SD-Card (or on a **Next186.VHD** file),
+You'll need an installed MS-DOS (up to v6.22) on the SD-Card (or on a **Next186.VHD** or **Next186.HD0** file),
 and the **Next186.ROM** BIOS file next to the **RBF**. 
 
 There's a sample VHD "MIST & SIDI Next186 DOS VHD" on archive.org to get you started.
 
-The core requires firmware version at least **210715**.
+The core requires firmware version at least **220821**.
 
 This core has several compatibility issues (but slowly improving). Here's a spreadsheet with
 hint and tips for some titles:
@@ -26,6 +29,7 @@ https://docs.google.com/spreadsheets/d/1r07Ubfzquz2FxnKp4GROk8_Kq6kTlVW7YxVTmBDR
 ### Settings
 
 - CPU Speed: Maximum, /2, /3, /4 - Normally it is OK to use Maximum but quite a few games work better when set to /3 
+- ISA Bus Wait: 1,2,3,4 us - Delay reading/writing AdLib ports. Might affect detectability/sound playback.
 - MIDI: MPU401, COM1 - MPU401 enables the standard MIDI out port, COM1 enables COM1 serial rs232 out of the MIDI port.
 - NMI: Hardware interrupt useful for debugging in DOS.
 
@@ -44,6 +48,13 @@ Some games may require a slower CPU /3 speed to work correctly with the MT-32 wh
 
 You can also control the MT32-Pi from DOS using [mt32-pi-control](https://github.com/gmcn42/mt32-pi-control/tree/main/dos_bin)
 
+### IDE support
+
+The primary/slave drive is a permanent ATAPI CDROM. It's possbile to mount CUE/ISO files from the OSD. DOS requires an ATAPI CDROM driver (VIDE-CDD.SYS is recommended) and MSCDEX.
+
+The secondary IDE channel is for ATA Hard Disk images. **Next186.HD2** and **Next186.HD3** files are automatically mounted during boot for the master/slave drives.
+As the Next186 BIOS doesn't have IDE support, it requires a DOS driver, like **3DRIVES** or **4DRIVES**. **Notice:** to mount these drives,
+the first (boot) drive must be called **Next186.HD0**, not **Next186.VHD**!
 
 ## Source code
 
