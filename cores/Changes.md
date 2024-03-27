@@ -1,4 +1,75 @@
-**TVC_230113.rbf**
+**menu_240113.rbf**
+- Shorter hsync/longer back porch at 15kHz
+
+**menu_240111.rbf**
+- More close to VGA timings (at least in NTSC mode)
+- Large OSD (need firmware version at least 240105!)
+- Background image changed to 640x312 (reload/resize menu.rom, if using it)
+
+**Atari7800_240105.rbf**
+- New core based on k7800 (c) by Jamie Blanks (Kitrinx)
+
+**C64_240105.rbf**
+- Lot of VIC-II accuracy improvements
+- Selectable VIC-II variant
+
+**C64_231205.rbf**
+- Add the extended Magic Desk cartridge format
+- VIC-II: apply color change (background mainly) one pixel earlier (fixes many demos with one-pixel glitches, like Edge of Disgrace or The Space is Broken)
+
+**snes_mist_231202.rbf**
+- Add an NTSC-DeJitter video mode, which breaks 100% cycle accuracy, but works better on some displays
+
+**ZXN_230902.rbf**
+- Update to the latest core (3.02)
+
+**NeoGeo_230806.rbf**
+- Timer fix in PAL mode
+- Some CD related fixes (Double Dragon, Karnov's Revenge)
+
+**NeoGeo_230705.rbf**
+- CD support
+
+**NeoGeo_230620.rbf**
+
+- Fixes and some optimizations in the SDRAM controller
+- Finished the conversion to synchronous logic. No more latches/generated clocks!
+- Use upstream jt12
+- Memcard save/load support
+- Revisit button assignments
+
+**NeoGeo_230607.rbf**
+- New port
+
+**msx_mist_230512.rbf**
+- Fix the MIDI/WiFi module use
+- Option to choose between MIDI/WiFi mode for the UART pins
+
+**snes_mist_230503.rbf**
+- Fix in the scandoubler to handle the NTSC short line
+
+**PCXT_mist_230421.rbf**
+- New core
+
+**snes_mist_230420.rbf**
+- Update with the latest upstream changes since the last release
+- SFC player option (exit from it with reset)
+
+**C64_230402.rbf**
+- Allow to set the mouse port manually in the OSD
+- PRG injection should set some ZP variables +1 beyond the end
+- VIC-II: fix NTSC bus access slots
+
+**ZXN-230331.rbf**
+- Rebase to the latest ISSUE4 release
+- Update mist-modules
+
+**msx_mist-230331.rbf**
+- Update to OCM-PLD 3.9.1
+- Add a Mount VHD option to the OSD
+- Fix the SD Card emulation for Nextor kernels
+
+**TVC_230228.rbf**
 - Fix sound divider and interrupt generator
 
 **C64_230228.rbf**
